@@ -20,6 +20,16 @@ Two of us (Quincy + Zach) work on this at the same time, so one rule keeps us fr
    ```
 6. Delete the branch after merge.
 
+### Log the thinking, not just the code
+
+Our Claude sessions can't see each other's chats, so the repo is the shared brain. When something gets decided — in person with JP, in a chat, in a Claude session — it goes in `docs/`:
+
+- `docs/DECISIONS.md` — every decision, dated, with the why. Append, never rewrite.
+- `docs/JP_BRIEF.md` — everything JP has told us (product, keywords, how appointments work, lead schema).
+- `docs/FINDER_AGENT.md` / future spec docs — one per agent or subsystem.
+
+Same PR rule applies to docs. Before starting work, read `docs/DECISIONS.md` so you're building on the latest decisions.
+
 ### Secrets
 
 This repo is **public**. Never commit API keys (Anthropic, Twilio, Slack), phone numbers, or any lead/customer data. Use environment variables; commit a `.env.example` with blank values if you need to document them.
