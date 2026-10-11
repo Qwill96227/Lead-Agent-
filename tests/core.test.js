@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { sign, sanitize } from "../netlify/functions/lead.mjs";
+import { sign, sanitize } from "../server/lead.js";
 
 // Load the browser script the way a page does: as a classic script that sets self.AndiCore.
 const sandbox = { self: {}, console };
