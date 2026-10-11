@@ -31,6 +31,15 @@
   let aiTurns = 0;
   const MAX_AI_TURNS = 6; // keep costs and drift bounded per visitor
 
+  // Two step orders. "Chat with Andi" qualifies first, then books.
+  // "Set up a consultation" (fast track) books first, then asks optional
+  // prep questions the homeowner can skip at any point.
+  const ORDER = ["pains", "windows", "doors", "age", "material", "home", "owner", "timeline", "contact", "book"];
+  const FAST_ORDER = ["contact", "book", "pains", "windows", "doors", "age", "material", "home", "owner"];
+  const PREP = new Set(["pains", "windows", "doors", "age", "material", "home", "owner"]);
+  let fastTrack = false;
+  const SKIP = { id: "__skip", label: "Skip the rest" };
+
   // ---------- Rendering ----------
   function scrollDown() { log.scrollTop = log.scrollHeight; }
 
@@ -92,13 +101,27 @@
       };
       quick.appendChild(done);
     }
+    // On the fast track the prep questions are optional.
+    if (fastTrack && PREP.has(state)) {
+      const s = document.createElement("button");
+      s.type = "button";
+      s.className = "chip";
+      s.textContent = SKIP.label;
+      s.onclick = () => { if (!busy) answer(SKIP.label, SKIP); };
+      quick.appendChild(s);
+    }
   }
 
   function clearQuick() { quick.innerHTML = ""; }
 
   const STEP_OF = { greet: 0, pains: 1, windows: 1, doors: 1, age: 1, material: 1, home: 2, owner: 2, timeline: 3, contact: 4, book: 4, done: 5, dq: 5 };
+  const FAST_STEP_OF = { contact: 1, book: 2, pains: 3, windows: 3, doors: 3, age: 3, material: 3, home: 4, owner: 4, done: 5, dq: 5 };
+  const STEP_LABELS = ["Windows", "Home", "Timing", "Contact"];
+  const FAST_STEP_LABELS = ["Contact", "Time", "Windows", "Home"];
   function setProgress() {
-    const s = STEP_OF[state] || 0;
+    const s = (fastTrack ? FAST_STEP_OF : STEP_OF)[state] || 0;
+    const labels = fastTrack ? FAST_STEP_LABELS : STEP_LABELS;
+    stepEls.forEach((el) => { el.textContent = labels[Number(el.dataset.step) - 1]; });
     bar.style.width = Math.min(100, (s / 5) * 100) + "%";
     stepEls.forEach((el) => el.classList.toggle("on", Number(el.dataset.step) === s));
   }
@@ -178,12 +201,22 @@
   const STATES = {
     async greet() {
       await say(`Hi, I'm ${cfg.agentName}! I can set up a free, no-pressure window consultation in about 2 minutes.`);
+      if (fastTrack) return fastIntro(); // the booking button was clicked while Andi was greeting
       await say("First, what's bugging you about your current windows? Pick any that apply.");
+      if (fastTrack) return fastIntro();
       state = "pains"; setProgress();
       offerPains();
     },
     async pains(re) {
-      await say(re ? "Which of these sound like your windows? Pick any that apply." : "What's bugging you about your current windows?");
+      if (fastTrack && !re) {
+        const a = lead.appointment;
+        await say(a
+          ? `You're booked for ${C.formatDay(a.date)} at ${a.slot}! A few quick questions so your consultant comes prepared. Skip anytime.`
+          : "Got it, your consultant will reach out to pick a time. A few quick questions so they come prepared. Skip anytime.");
+        await say("What's bugging you about your current windows? Pick any that apply.");
+      } else {
+        await say(re ? "Which of these sound like your windows? Pick any that apply." : "What's bugging you about your current windows?");
+      }
       offerPains();
     },
     async windows(re) {
@@ -221,7 +254,9 @@
     },
     async book() {
       const days = C.nextBusinessDays(3);
-      await say(`Thanks, ${lead.contact.first}! Want to lock in a free in-home consultation? Pick a time that works.`);
+      await say(fastTrack
+        ? `Thanks, ${lead.contact.first}! Pick a time for your free in-home consultation.`
+        : `Thanks, ${lead.contact.first}! Want to lock in a free in-home consultation? Pick a time that works.`);
       const opts = [];
       days.forEach((d) => cfg.slots.forEach((slot) => opts.push({ id: `${d}|${slot}`, label: `${C.formatDay(d)} · ${slot}`, date: d, slot })));
       opts.push({ id: "later", label: "Text me to schedule instead" });
@@ -235,7 +270,7 @@
       onDone: (chosen) => {
         lead.pains = chosen.map((c) => c.id);
         userSaid(chosen.map((c) => c.label).join(", "));
-        next("windows");
+        next();
       },
     });
   }
@@ -251,9 +286,39 @@
     addMsg("user", text);
   }
 
-  async function next(name) {
+  // Move to the step after the current one in the active order, or finish.
+  async function advance() {
+    const order = fastTrack ? FAST_ORDER : ORDER;
+    const i = order.indexOf(state);
+    const nextState = order[i + 1];
+    if (nextState) await ask(nextState);
+    else await finish();
+  }
+
+  async function next() {
     busy = true;
-    try { await ask(name); } finally { busy = false; }
+    try { await advance(); } finally { busy = false; }
+  }
+
+  // Booking-first path: skip straight to contact details.
+  async function fastIntro() {
+    clearQuick();
+    addMsg("user", "I'd like to set up a consultation.");
+    await say("Great, let's get you on the calendar. Where should your consultant reach you? This also tells me which local team covers your area.");
+    state = "contact"; setProgress();
+    showContactForm();
+  }
+
+  async function startFastTrack() {
+    document.querySelector(".chat").scrollIntoView({ behavior: "smooth", block: "start" });
+    // Only switch paths before the homeowner has answered anything.
+    const fresh = state === null || state === "greet" || (state === "pains" && !lead.pains.length);
+    if (fastTrack || !fresh) { input.focus({ preventScroll: true }); return; }
+    fastTrack = true;
+    if (state === null) return begin(); // greet sees fastTrack and hands off
+    if (busy) return; // greet is still typing; it hands off when done
+    busy = true;
+    try { await fastIntro(); } finally { busy = false; }
   }
 
   // ---------- Answer handling (buttons and typed text) ----------
@@ -271,6 +336,10 @@
 
   // Returns true when the answer moved the flow forward.
   async function apply(text, o) {
+    if (o && o.id === SKIP.id) {
+      await finish();
+      return true;
+    }
     switch (state) {
       case "greet":
         return false;
@@ -279,7 +348,7 @@
         const found = C.PAINS.filter((p) => p.label.toLowerCase().split(/[ /]+/).some((w) => w.length > 3 && t.includes(w)));
         if (!found.length) return false;
         lead.pains = found.map((p) => p.id);
-        await ask("windows");
+        await advance();
         return true;
       }
       case "windows": {
@@ -292,7 +361,7 @@
           lead.windows = n;
           lead.windowsApprox = false;
         }
-        await ask("doors");
+        await advance();
         return true;
       }
       case "doors": {
@@ -300,7 +369,7 @@
         if (n === null && /\b(no|none|nope|zero)\b/i.test(text)) n = 0;
         if (n === null || n > 20) return false;
         lead.doors = n;
-        await ask("age");
+        await advance();
         return true;
       }
       case "age": {
@@ -310,21 +379,21 @@
         if (!hit) return false;
         lead.windowAge = hit.id;
         lead.windowAgeYears = !o && yrs !== null && yrs < 120 ? yrs : null;
-        await ask("material");
+        await advance();
         return true;
       }
       case "material": {
         const hit = o || matchOption(text, withKeys(C.MATERIALS));
         if (!hit) return false;
         lead.windowMaterial = hit.id;
-        await ask("home");
+        await advance();
         return true;
       }
       case "home": {
         const hit = o || matchOption(text, withKeys(C.PROPERTY_TYPES));
         if (!hit) return false;
         lead.propertyType = hit.id;
-        await ask("owner");
+        await advance();
         return true;
       }
       case "owner": {
@@ -334,32 +403,36 @@
         lead.owner = hit.id === "yes";
         if (!lead.owner) {
           state = "dq"; setProgress();
-          await say("Thanks for being upfront! Window replacement has to be approved by the homeowner. Feel free to share this page with your landlord. They can book a free consultation here anytime.");
+          if (fastTrack) {
+            // Already booked: release the slot and let the rep follow up with the owner.
+            lead.appointment = null;
+            await say("Thanks for being upfront! Window replacement has to be approved by the homeowner, so I've released that time slot. Your consultant will reach out about setting up a visit with the owner.");
+          } else {
+            await say("Thanks for being upfront! Window replacement has to be approved by the homeowner. Feel free to share this page with your landlord. They can book a free consultation here anytime.");
+          }
           saveAndSend();
+          input.disabled = true;
+          input.placeholder = "Conversation complete";
           return true;
         }
-        await ask("timeline");
+        await advance();
         return true;
       }
       case "timeline": {
         const hit = o || matchOption(text, withKeys(C.TIMELINES));
         if (!hit) return false;
         lead.timeline = hit.id;
-        await ask("contact");
+        await advance();
         return true;
       }
       case "contact":
         return false; // the form handles this step
       case "book": {
-        if (o && o.id === "later") {
-          await finish(null);
-          return true;
-        }
-        if (o && o.date) {
-          await finish({ date: o.date, slot: o.slot });
-          return true;
-        }
-        return false;
+        if (o && o.id === "later") lead.appointment = null;
+        else if (o && o.date) lead.appointment = { date: o.date, slot: o.slot };
+        else return false;
+        await advance(); // finishes on the normal path; prep questions on the fast track
+        return true;
       }
     }
     return false;
@@ -426,7 +499,7 @@
           saveAndSend();
           return;
         }
-        await ask("book");
+        await advance();
       } finally {
         busy = false;
       }
@@ -440,8 +513,8 @@
   }
 
   // ---------- Finish: confirmation, save, hand off ----------
-  async function finish(appointment) {
-    lead.appointment = appointment;
+  async function finish() {
+    const appointment = lead.appointment;
     state = "done"; setProgress();
     C.finalizeLead(lead);
 
@@ -449,7 +522,7 @@
     const res = await callAndi("confirm", { lead: publicLead() });
     if (res && res.projectDetails) lead.projectDetails = res.projectDetails;
     const fallback = appointment
-      ? `You're all set, ${lead.contact.first}! Your free consultation is ${C.formatDay(appointment.date)} at ${appointment.slot}. ${lead.smsConsent ? "You'll get a text confirmation shortly. " : ""}Your consultant will measure your ${lead.windows + lead.doors} openings and go over options. No pressure, no obligation.`
+      ? `You're all set, ${lead.contact.first}! Your free consultation is ${C.formatDay(appointment.date)} at ${appointment.slot}. ${lead.smsConsent ? "You'll get a text confirmation shortly. " : ""}Your consultant will measure ${lead.windows + lead.doors ? `your ${lead.windowsApprox ? "roughly " : ""}${lead.windows + lead.doors} openings` : "every opening"} and go over options. No pressure, no obligation.`
       : `Thanks, ${lead.contact.first}! A local consultant will ${lead.smsConsent ? "text" : "call"} you shortly to find a time that works.`;
     addMsg("andi", (res && res.message) || fallback);
     C.finalizeLead(lead);
@@ -495,6 +568,8 @@
     input.value = "";
     answer(text, null);
   });
+
+  $("#book").addEventListener("click", startFastTrack);
 
   $("#start").addEventListener("click", () => {
     document.querySelector(".chat").scrollIntoView({ behavior: "smooth", block: "start" });
