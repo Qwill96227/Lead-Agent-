@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Free Window Consultation | Greater Baton Rouge</title>
+  <meta name="description" content="Drafty, foggy or hard-to-open windows? Chat with Andi and book a free in-home window replacement consultation in about two minutes.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+  <!-- Optional Cloudflare Turnstile: set the site key, and TURNSTILE_SECRET_KEY on the server. -->
+  <script>window.ANDI_TURNSTILE_SITEKEY = "";</script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">Andi <small>Window consultations</small></div>
+    <a id="dash-link" href="dashboard.html" hidden>Rep dashboard →</a>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="eyebrow">Greater Baton Rouge · Northshore · New Orleans · Lafayette</div>
+          <h1>Windows that fog, stick or leak? <em>Let's fix that.</em></h1>
+          <p class="lede">Answer four quick questions and book a free, no-pressure in-home consultation. A local window specialist measures every opening and gives you a written quote.</p>
+          <ul class="proof">
+            <li>Free in-home measurement</li>
+            <li>Custom-built replacement windows &amp; doors</li>
+            <li>No obligation</li>
+          </ul>
+          <p style="margin-top:26px"><button id="start" class="btn btn-gold" type="button">Chat with Andi</button></p>
+        </div>
+
+        <section class="chat" aria-label="Chat with Andi">
+          <div class="chat-head">
+            <div class="avatar" aria-hidden="true">A</div>
+            <div>
+              <div class="who">Andi</div>
+              <div class="status">● Online · replies instantly</div>
+            </div>
+          </div>
+          <div class="progress" aria-hidden="true"><span id="progress"></span></div>
+          <div class="steps" aria-hidden="true">
+            <span data-step="1">Windows</span><span data-step="2">Home</span><span data-step="3">Timing</span><span data-step="4">Contact</span>
+          </div>
+          <div id="log" class="log" role="log" aria-live="polite"></div>
+          <div id="quick" class="quick"></div>
+          <form id="composer" class="composer" autocomplete="off">
+            <label class="sr-only" for="text">Message</label>
+            <input id="text" type="text" placeholder="Type a message…" maxlength="400">
+            <button class="btn" type="submit">Send</button>
+          </form>
+        </section>
+      </div>
+    </section>
+
+    <section class="features" aria-label="How it works">
+      <div class="feature"><h3>1. Tell Andi about your windows</h3><p>How many, how old and what's wrong. Takes about two minutes.</p></div>
+      <div class="feature"><h3>2. Pick a time</h3><p>Choose a slot for a free in-home consultation that fits your schedule.</p></div>
+      <div class="feature"><h3>3. Get a written quote</h3><p>Your consultant measures every opening and walks you through options.</p></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    Andi is a virtual assistant. Details you share go only to your local consultant.
+  </footer>
+
+  <template id="contact-tpl">
+    <form class="form-card" novalidate>
+      <div class="form-row">
+        <label>First name<input name="first" autocomplete="given-name" required></label>
+        <label>Last name<input name="last" autocomplete="family-name" required></label>
+      </div>
+      <div class="form-row">
+        <label>Mobile phone<input name="phone" type="tel" inputmode="tel" autocomplete="tel" required></label>
+        <label>Email (optional)<input name="email" type="email" autocomplete="email"></label>
+      </div>
+      <label>Street address<input name="street" autocomplete="street-address" required></label>
+      <div class="form-row">
+        <label>City<input name="city" autocomplete="address-level2" required></label>
+        <label>ZIP<input name="zip" inputmode="numeric" maxlength="5" autocomplete="postal-code" required></label>
+      </div>
+      <label>Year home was built (optional)<input name="yearBuilt" inputmode="numeric" maxlength="4"></label>
+      <label class="consent">
+        <input type="checkbox" name="consent">
+        <span>By checking this box, I agree that <strong data-seller></strong> may contact me at the number above about window and door replacement, including by text messages and calls made with automated technology. Consent is not a condition of purchase. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out or HELP for help.</span>
+      </label>
+      <div data-turnstile hidden></div>
+      <div class="form-error" role="alert"></div>
+      <button class="btn btn-gold" type="submit">Continue</button>
+    </form>
+  </template>
+
+  <script src="js/core.js"></script>
+  <script src="js/andi.js"></script>
+  <script>
+    if (window.ANDI_TURNSTILE_SITEKEY) {
+      const s = document.createElement("script");
+      s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+      s.async = true;
+      document.head.appendChild(s);
+    }
+  </script>
+</body>
+</html>
