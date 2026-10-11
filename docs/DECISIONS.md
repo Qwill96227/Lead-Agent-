@@ -45,3 +45,13 @@ Why: gets JP closer to the full lead record he's used to. Provider not chosen �
 **D12 — Real customer data never enters this repo.** JP's Salesforce screenshots and company KPI reports have real names/phones/addresses and internal numbers. We keep the *field schema* and *takeaways* only. — Zach. (Repo is public — see D13.)
 
 **D13 — Repo should go private before any lead data, keys, or customer info touches it.** Needs Quincy (owner). — Zach. Open.
+
+## 2026-10-11 (later)
+
+**D14 — Invite email is ON and the Finder sends it itself.** Supersedes the "one-tap approve" default in D8. Zach + JP discussed and chose the invite email. The Finder emails the prospect directly when it has an email for them; JP still gets his copy of every lead. Kill switch `INVITES_ENABLED` stays, and every sent invite is visible in the admin dashboard (D15). — Zach + JP.
+
+**D15 — Admin dashboard at `<vercel-domain>/admin`, behind a login.** Manages every lead the Finder has received: counts (found / judged / invited / replied / booked / dead), each lead's name + Facebook/IG profile link when we have it, the exact invite email that was sent, status (pending / successful / skipped), and an activity feed. Lives in the same Vercel project as the website (Zach has Vercel access). — Zach.
+
+**D16 — Admin dashboard design direction: the "Chokepoint Watch" tactical-console look.** Light grey/white, monospace type, thin rules, one orange accent, bracketed sidebar nav, top bar with breadcrumb + clock + search + alerts, big-number stat tiles, a lead inspector panel, an alert/activity feed with sparklines, and a dot-matrix map hero (Louisiana + the 100-mile circle, leads as dots). Reference image is in Zach's notes; the mock is published as a claude.ai artifact and linked from `FINDER_AGENT.md`. — Zach.
+
+**D17 — Build goes through CodexLoop (cross-model plan review) before code.** Finder P0 + admin dashboard are one plan; Codex attacks it read-only, Claude revises, Zach signs off, then build. Plan + review log get committed to `docs/planning/` via PR. — Zach.

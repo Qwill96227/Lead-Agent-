@@ -74,9 +74,9 @@ A `leads` table (Postgres on Railway, or Supabase) — `candidate` + judge outpu
 - Each lead block: name · where (city + source group) · when posted · **their exact words** (quoted, with link) · service + tags · enrichment (phone / email / address + confidence) · two buttons: **Send invite** · **Skip**. Buttons are signed one-tap links (HMAC, expire in 7 days) hitting the Finder's own endpoint.
 - From: the project domain (Vercel now, `.com` later). Reply-to: JP. Sending via Resend or Postmark; `JP_EMAIL` from env.
 
-### 8. Invite email to the prospect (D8)
+### 8. Invite email to the prospect (D8 → D14: automatic)
 
-Sent only when JP taps **Send invite** (default; flip to auto later if JP wants). Only when we have an email for them. Short, specific, sounds like a person. Template — the `{…}` parts are filled from the post, nothing else is generated:
+**Sent automatically by the Finder** when a lead passes the judge and enrichment returns an email (D14, supersedes the one-tap default). JP still receives his copy of every lead (§7); the **Send invite / Skip** buttons become **Resend / Mark dead**. `INVITES_ENABLED=false` stops invites without stopping sourcing. Only when we have an email for them. Short, specific, sounds like a person. Template — the `{…}` parts are filled from the post, nothing else is generated:
 
 > **Subject:** Your {windows / front door / patio door} — quick question
 >
@@ -99,6 +99,25 @@ Rules: one email, no sequence, no follow-up unless JP asks. Never mention that s
 ### 9. Runtime (D11)
 
 Node (TypeScript) on Railway, cron every 6 hours. Env: `JP_EMAIL`, scraper key, SERP key, enrichment key, email-provider key, `SIGNING_SECRET`, `DATABASE_URL`, `SITE_URL`. Kill switch: `FINDER_ENABLED=false` stops sourcing; `INVITES_ENABLED=false` stops invites independently.
+
+### 10. Admin dashboard — `<vercel-domain>/admin` (D15, D16)
+
+Same Vercel project as the website; reads the Finder's `leads` table through authenticated API routes. Login: email + password for a small allowlist (Zach, Quincy, JP), signed HttpOnly session cookie, rate-limited, no public signup. Every `/api/admin/*` route checks the session server-side — the HTML is never the gate.
+
+Screens (all one page, console-style — see D16 and the published mock):
+
+| Panel | Shows |
+|---|---|
+| **Top bar** | breadcrumb `Lead Agent / Finder / Louisiana`, live clock, last-run time, search, alerts count |
+| **Sidebar** | `[FINDER]` · Leads · Invites · Runs · Alerts · Settings; source toggles (Facebook / Instagram / Google / Maps / Permits) that mirror `FINDER_ENABLED` per source |
+| **Map hero** | dot-matrix Louisiana, the 100-mile circle around Baton Rouge, one dot per lead (orange = invited, dark = pending, hollow = dead); click = select |
+| **Pipeline tiles** | Found · Passed judge · Enriched · Invited · Replied · Booked · Dead — this month, with sparkline of the last 30 days |
+| **Lead inspector** | selected lead: name, city, source + group, **profile link (FB/IG) when we have it**, their post (quoted + link), judge output (intent, service, FRAMES/problem tags, score), enrichment (phone / email / address + confidence), status timeline, **the exact invite email that was sent** (subject + body, sent-at, opened/replied if the provider reports it), actions: Resend · Mark dead · Mark booked · Copy for CRM |
+| **Leads table** | filter by status / source / city / date; sort by score; CSV export |
+| **Activity feed** | run started/finished (counts), lead found, invite sent, reply received, errors — severity-tagged like an alert feed |
+| **Runs** | each cron run: sources hit, candidates, passed, cost (API calls), duration, errors |
+
+Data: `leads` (§6) + `invites` (lead_id, to, subject, body, sent_at, provider_id, opened_at, replied_at) + `runs` + `events`. Postgres (Supabase) so the Finder on Railway and the Vercel routes share one DB.
 
 ## Cost sketch (per month, to be measured)
 
