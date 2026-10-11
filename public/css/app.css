@@ -53,6 +53,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn-gold:hover { background: var(--gold-400); }
 .btn-ghost { background: transparent; color: var(--navy-800); border-color: var(--line); }
 .btn-ghost:hover { background: var(--navy-100); }
+.btn-outline-light { background: transparent; color: var(--white); border-color: rgba(255, 255, 255, .55); }
+.btn-outline-light:hover { background: rgba(255, 255, 255, .1); border-color: var(--gold-400); }
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
 .btn-sage { background: var(--sage); color: #fff; border-radius: 4px; padding: 7px 18px; }
 .btn-sage:hover { background: #6b7c58; }
 .btn-sm { padding: 6px 12px; font-size: 13px; }

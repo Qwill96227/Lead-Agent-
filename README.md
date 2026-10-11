@@ -11,8 +11,10 @@ Andi is an AI lead qualification chat plus a rep dashboard for a single window r
 | `public/js/core.js` | Lead record, territory check, scoring, storage (shared) |
 | `public/js/andi.js` | Chat state machine |
 | `public/js/dashboard.js` | Dashboard UI |
-| `netlify/functions/andi.mjs` | `/api/andi`: Claude proxy (API key stays server-side) |
-| `netlify/functions/lead.mjs` | `/api/lead`: HMAC-signed forward to the n8n intake webhook |
+| `server/andi.js` | `/api/andi` logic: Claude proxy (API key stays server-side) |
+| `server/lead.js` | `/api/lead` logic: HMAC-signed forward to the n8n intake webhook |
+| `api/` | Vercel entry points that call `server/` |
+| `netlify/functions/` | Netlify entry points that call `server/` |
 | `tests/` | Unit tests (`npm test`) |
 
 ## How a lead flows
@@ -48,9 +50,24 @@ Tests:
 npm test
 ```
 
-## Deploy (Netlify)
+## Deploy
 
-Connect the repo and Netlify picks up `netlify.toml`, which publishes `public/` and runs functions from `netlify/functions/`. Set the variables from `.env.example` in Netlify's environment settings.
+The app runs on either Vercel or Netlify. Both serve `public/` and expose the same `/api/andi` and `/api/lead` routes from the shared code in `server/`. Set the variables from `.env.example` in the host's environment settings, then redeploy so the functions pick them up.
+
+**Vercel.** Import the GitHub repo at vercel.com/new and keep the defaults. `vercel.json` sets `public/` as the output, and files in `api/` become the functions. From the terminal:
+
+```bash
+npm i -g vercel
+vercel            # first run links the project and makes a preview deploy
+vercel env add ANTHROPIC_API_KEY production   # repeat for each variable you use
+vercel --prod
+```
+
+`vercel dev` runs the site and functions locally after the project is linked.
+
+**Netlify.** Connect the repo and Netlify picks up `netlify.toml`, which publishes `public/` and runs functions from `netlify/functions/`.
+
+Set `ALLOWED_ORIGIN` to the production URL on whichever host you use, such as `https://your-project.vercel.app`.
 
 ## n8n webhook verification
 
@@ -67,7 +84,7 @@ In n8n, recompute it in a Code node and reject a mismatch or a timestamp older t
 - Set `CONFIG.sellerName` in `public/js/core.js` to the dealer's legal name, because the consent text names it.
 - Have the consent wording and page copy reviewed for TCPA and Andersen co-op advertising compliance.
 - Dashboard data lives in each browser's localStorage. Use Google Sheets through n8n as the shared record until a real backend exists.
-- Put the dashboard behind authentication, such as Netlify password protection or Cloudflare Access, before real leads flow.
+- Put the dashboard behind authentication, such as Vercel Deployment Protection, Netlify password protection or Cloudflare Access, before real leads flow.
 
 ## Contributing
 
