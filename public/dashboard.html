@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Andi Leads</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="dash-header">
+    <div class="brand">Andi <small>Rep dashboard</small></div>
+    <div class="rep">
+      <label for="rep-name">Rep</label>
+      <input id="rep-name" autocomplete="name">
+      <a class="btn btn-gold btn-sm" href="index.html">Open Andi chat</a>
+    </div>
+  </header>
+
+  <main class="dash">
+    <section class="kpis" id="kpis" aria-label="This month"></section>
+
+    <div class="toolbar">
+      <label class="sr-only" for="q">Search leads</label>
+      <input id="q" type="search" placeholder="Search name, city, ZIP, phone…">
+      <label class="sr-only" for="f-status">Status</label>
+      <select id="f-status"><option value="">All statuses</option></select>
+      <label class="sr-only" for="f-tier">Score</label>
+      <select id="f-tier">
+        <option value="">All scores</option>
+        <option value="hot">Hot</option>
+        <option value="warm">Warm</option>
+        <option value="cold">Cold</option>
+      </select>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost btn-sm" id="seed" type="button">Load demo leads</button>
+      <button class="btn btn-ghost btn-sm" id="export" type="button">Export CSV</button>
+      <button class="btn btn-ghost btn-sm" id="clear-demo" type="button">Clear demo leads</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="leads">
+        <thead>
+          <tr>
+            <th>Homeowner</th><th>Set date</th><th>Appointment</th><th>Market</th><th>Details</th><th>Score</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div id="empty" class="empty" hidden>
+        No leads yet. Run through the <a href="index.html">Andi chat</a> or load demo leads.
+      </div>
+    </div>
+    <p class="sub" style="color:var(--muted);font-size:12px;margin-top:10px">
+      Leads here are stored in this browser only. In production they are also sent to n8n, which logs them to Google Sheets.
+    </p>
+  </main>
+
+  <div id="modal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+      <div class="modal-title"><span id="m-title"></span><button class="x" type="button" data-close aria-label="Close">×</button></div>
+      <div class="modal-body" id="m-body"></div>
+      <div class="modal-foot">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" type="button" id="m-copy">Copy for CRM</button>
+          <button class="btn btn-ghost btn-sm" type="button" id="m-delete">Delete</button>
+        </div>
+        <button class="btn btn-sage" type="button" data-close>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="js/core.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
