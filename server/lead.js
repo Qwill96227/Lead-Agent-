@@ -1,13 +1,16 @@
-// Shared handler for POST /api/lead (wrapped by netlify/functions and api/ for Vercel). Accepts a finished Andi lead and forwards it to n8n
-// (Workflow 1: lead intake + 60-second SMS outreach), signed with HMAC-SHA256.
+// Shared handler for POST /api/lead (wrapped by netlify/functions and api/ for Vercel).
+// Accepts a finished Andi lead, stores it in Supabase with a consent record (server/db.js),
+// then forwards it to n8n (Workflow 1: lead intake + outreach), signed with HMAC-SHA256.
 //
 // n8n should verify:  hex(HMAC_SHA256(secret, `${X-Andi-Timestamp}.${rawBody}`)) === X-Andi-Signature
 // and reject timestamps older than ~5 minutes.
 //
-// Env: N8N_WEBHOOK_URL, N8N_WEBHOOK_SECRET (both optional: without them the lead is
-//      accepted but not forwarded), TURNSTILE_SECRET_KEY (optional), ALLOWED_ORIGIN (optional)
+// Env: SUPABASE_URL, SUPABASE_SECRET_KEY (optional: without them the lead isn't stored)
+//      N8N_WEBHOOK_URL, N8N_WEBHOOK_SECRET (optional: without them the lead isn't forwarded)
+//      TURNSTILE_SECRET_KEY (optional), ALLOWED_ORIGIN (optional)
 
 import { createHmac } from "node:crypto";
+import { saveLead, dbConfigured } from "./db.js";
 
 const json = (status, body) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -86,11 +89,31 @@ export async function handleLead(req, ip) {
 
   if (!(await turnstileOk(lead.turnstileToken, ip))) return json(403, { error: "verification failed" });
 
+  const clean = sanitize(lead);
+
+  // 1) Store in Supabase (the system of record), with a consent record.
+  const saved = await saveLead(clean, {
+    ip,
+    userAgent: req.headers.get("user-agent"),
+    consentVersion: String(lead.consentVersion || "").slice(0, 40) || null,
+  });
+
+  // 2) Forward to n8n, carrying the database id when we have one.
+  const forwarded = await forwardToN8n(saved.id ? { ...clean, dbId: saved.id } : clean);
+
+  // Fail only if something was configured and nothing succeeded.
+  const anyConfigured = dbConfigured() || forwarded.configured;
+  const anySucceeded = saved.stored || forwarded.ok;
+  const status = anyConfigured && !anySucceeded ? 502 : 200;
+  return json(status, { ok: status === 200, stored: saved.stored, forwarded: forwarded.ok });
+}
+
+async function forwardToN8n(payload) {
   const url = process.env.N8N_WEBHOOK_URL;
   const secret = process.env.N8N_WEBHOOK_SECRET;
-  if (!url || !secret) return json(200, { ok: true, forwarded: false });
+  if (!url || !secret) return { configured: false, ok: false };
 
-  const body = JSON.stringify(sanitize(lead));
+  const body = JSON.stringify(payload);
   const ts = Math.floor(Date.now() / 1000).toString();
   try {
     const res = await fetch(url, {
@@ -98,14 +121,11 @@ export async function handleLead(req, ip) {
       headers: { "Content-Type": "application/json", "X-Andi-Timestamp": ts, "X-Andi-Signature": sign(secret, ts, body) },
       body,
     });
-    if (!res.ok) {
-      console.error("n8n webhook returned", res.status);
-      return json(502, { ok: false, forwarded: false });
-    }
-    return json(200, { ok: true, forwarded: true });
+    if (!res.ok) console.error("n8n webhook returned", res.status);
+    return { configured: true, ok: res.ok };
   } catch (err) {
-    console.error("n8n webhook failed", err);
-    return json(502, { ok: false, forwarded: false });
+    console.error("n8n webhook failed:", err.message);
+    return { configured: true, ok: false };
   }
 }
 

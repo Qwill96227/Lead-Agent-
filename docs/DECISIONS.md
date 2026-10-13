@@ -45,3 +45,9 @@ Why: gets JP closer to the full lead record he's used to. Provider not chosen �
 **D12 — Real customer data never enters this repo.** JP's Salesforce screenshots and company KPI reports have real names/phones/addresses and internal numbers. We keep the *field schema* and *takeaways* only. — Zach. (Repo is public — see D13.)
 
 **D13 — Repo should go private before any lead data, keys, or customer info touches it.** Needs Quincy (owner). — Zach. Open.
+
+## 2026-10-12
+
+**D18 — Supabase Postgres is the shared leads database for both agents. Proposed, needs Zach's OK.**
+Website (Andi) leads are stored in a `leads` table with a `source` column (`website` / `finder`) so the Finder and the admin dashboard (Zach's D15) can use the same table. Consent records go in `lead_consents`. Only server code connects, with the secret key. RLS is on with no policies, so the browser and the public key get nothing. Schema in `supabase/migrations/`. Numbered D18 because D14–D17 are still on Zach's branch. — Quincy.
+Open: Zach to confirm the shared table works for Finder fields (judge output and enrichment can go in `details` or his own columns). The repo should go private (D13) before real leads are stored, even though lead data lives in Supabase, not the repo.
