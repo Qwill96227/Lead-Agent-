@@ -12,17 +12,19 @@ Andi is an AI lead qualification chat plus a rep dashboard for a single window r
 | `public/js/andi.js` | Chat state machine |
 | `public/js/dashboard.js` | Dashboard UI |
 | `server/andi.js` | `/api/andi` logic: Claude proxy (API key stays server-side) |
-| `server/lead.js` | `/api/lead` logic: HMAC-signed forward to the n8n intake webhook |
+| `server/lead.js` | `/api/lead` logic: stores the lead, then HMAC-signs and forwards it to n8n |
+| `server/db.js` | Supabase storage (server-only, secret key) |
+| `supabase/migrations/` | Database schema: `leads`, `lead_consents`, insert function |
 | `api/` | Vercel entry points that call `server/` |
 | `netlify/functions/` | Netlify entry points that call `server/` |
-| `tests/` | Unit tests (`npm test`) |
+| `tests/` | Unit tests, plus migration tests in real Postgres via PGlite (`npm test`) |
 
 ## How a lead flows
 
 1. The homeowner answers Andi's questions: pain points, window count, doors, window age, frame material, home type, ownership and timeline.
 2. Andi collects contact details, checks the ZIP against the territory and offers consultation slots.
 3. The lead is scored 0–100 (hot 70+, warm 45+, cold) with the reasons shown to the rep.
-4. The lead is saved in the browser and posted to `/api/lead`. That function signs it and sends it to n8n Workflow 1, which handles the 60-second SMS and the Sheets log.
+4. The lead is posted to `/api/lead`. That function saves it to Supabase with a consent record, then signs it and sends it to n8n Workflow 1 for outreach. The browser keeps a copy for the current rep dashboard until that dashboard reads from the database.
 
 The lead record mirrors the fields on the rep's CRM appointment card: Appointment Type, Set Date, Address, Primary Contact, Property Type, Lead Source, Source Breakdown, Details ("6 Units (6 Windows +0 Doors)"), Age of Windows, Windows Material, Year Built and Project Details. The dashboard's **Copy for CRM** button copies those fields as text for pasting into the portal.
 
@@ -68,6 +70,23 @@ vercel --prod
 **Netlify.** Connect the repo and Netlify picks up `netlify.toml`, which publishes `public/` and runs functions from `netlify/functions/`.
 
 Set `ALLOWED_ORIGIN` to the production URL on whichever host you use, such as `https://your-project.vercel.app`.
+
+## Database (Supabase)
+
+Leads are stored in Supabase Postgres. Only the server functions connect, using the project's secret key, so the browser never talks to the database. Row-level security is on with no policies, which means the public key can't read or write anything.
+
+- **`leads`** holds one row per lead with the CRM card fields. A `source` column says whether the lead came from the website or the Finder.
+- **`lead_consents`** records what each homeowner agreed to, with the consent wording version, time and IP address.
+- **`insert_website_lead()`** saves a lead and its consent in one step. Resubmitting the same browser lead id returns the existing row and changes nothing.
+
+To set it up:
+
+1. Create a Supabase project in a US region.
+2. Run the file in `supabase/migrations/` in the SQL Editor, or run `supabase db push` with the Supabase CLI.
+3. In Project Settings, open API Keys and copy the project URL and a **secret** key.
+4. Add them to Vercel as `SUPABASE_URL` and `SUPABASE_SECRET_KEY`, then redeploy.
+
+Use the paid plan once real leads flow. Free projects pause after a week without activity.
 
 ## n8n webhook verification
 

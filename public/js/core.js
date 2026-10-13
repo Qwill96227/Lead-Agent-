@@ -25,6 +25,8 @@
     // Legal name of the one seller the homeowner consents to hear from (FCC one-to-one consent).
     // TODO before launch: replace with the dealer's legal entity name.
     sellerName: "[Dealer legal name]",
+    // Bump whenever the consent wording in index.html changes; stored with each consent record.
+    consentVersion: "2026-10-11",
     appointmentType: "In-Home Consultation",
     leadSource: "Andi Web Chat",
     monthlyLeadTarget: 36,

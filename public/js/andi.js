@@ -483,6 +483,7 @@
       lead.address = { street: f.street.trim(), city: f.city.trim(), state: zip.startsWith("39") ? "MS" : "LA", zip };
       lead.yearBuilt = String(f.yearBuilt || "").trim();
       lead.smsConsent = f.consent === "on";
+      lead.consentVersion = cfg.consentVersion;
       lead.turnstileToken = f["cf-turnstile-response"] || "";
 
       card.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
